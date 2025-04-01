@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK Rain Gauges Record Length</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- Styles for map and dropdown -->
+    <style>
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+
+        select {
+            margin: 20px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Dropdown for selecting year -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <label for="year-select" style="font-size: 14px;"><h2>Select Time Resolution:</h2></label>
+        <select id="time-select" style="font-size: 14px; padding: 5px; width: auto;">
+        </select>
+        <h2 style="flex-grow: 1; text-align: center; margin: 0; margin-left: -20px;">Rain gauges (1 day)</h2>
+
+    </div>
+
+    <script>
+        const timeSelect = document.getElementById('time-select');
+        const timeOptions = ["15min", "1h", "1d", "1mon"];
+
+        timeOptions.forEach(time => {
+            let option = document.createElement('option');
+            option.value = time;
+            option.textContent = time.replace("min", " min").replace("h", " hour").replace("d", " day").replace("mon", " month");
+
+            // Set default selection to "1d"
+            if (time === "1d") {
+                option.selected = true;
+            }
+            timeSelect.appendChild(option);
+        });
+        // Handle selection change
+        timeSelect.addEventListener('change', function() {
+            console.log("Selected Time Resolution: " + timeSelect.value);
+            // Call your update function here
+        });
+    </script>
+
+    <!-- Map container -->
+    <div id="map"></div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script>
+        // Initialize the map with EPSG:4326 CRS (WGS84)
+        var map = L.map('map').setView([53.5074, -0.8], 5);  // Set initial view to London (lat, lng)
+
+        // Set the tile layer (OpenStreetMap or your own tile service)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Function to load GeoJSON based on the year selected
+        function loadGeoJSON(year) {
+            // Clear existing GeoJSON layers
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.GeoJSON) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            function getColor(value) {
+                if (value === null || value === undefined) return 'transparent'; // Hide if no value
+            
+                // Normalize value between 0 and 1 (0 to 160)
+                const normalizedValue = Math.min(Math.max(value, 0), 160) / 160;
+            
+                // Viridis color scale (RGB values extracted from matplotlib's viridis)
+                const viridisColors = [
+                    [68, 1, 84],  // Dark purple
+                    [71, 44, 122],
+                    [59, 81, 139],
+                    [44, 113, 142],
+                    [33, 144, 141],
+                    [39, 173, 129],
+                    [92, 200, 99],
+                    [170, 220, 50],
+                    [253, 231, 37]  // Bright yellow
+                ];
+            
+                // Get the index in the scale
+                const index = Math.floor(normalizedValue * (viridisColors.length - 1));
+                
+                // Get corresponding RGB values
+                const [r, g, b] = viridisColors[index];
+            
+                return `rgb(${r}, ${g}, ${b})`;  // Return as RGB string
+            }
+
+            // Function to style each feature
+            function style(feature) {
+                return {
+                    fillColor: getColor(feature.properties.record_len), // Color based on property
+                    weight: 0,
+                    opacity: 1,
+                    color: 'black',
+                    dashArray: '3',
+                    fillOpacity: 0.7
+                };
+            }
+
+           // Add tooltips on hover and make it permanent on click
+           function onEachFeature(feature, layer) {
+                let tooltip;  // Variable to store the tooltip for each polygon
+
+                // Tooltip on hover (brief)
+                layer.on('mouseover', function(e) {
+                    tooltip = layer.bindTooltip(`Max record length: ${feature.properties.record_len} years`, {
+                        permanent: false,        // Tooltip disappears after hover ends
+                        direction: "top",
+                        offset: [0, -5]
+                    }).openTooltip();
+                });
+
+                // Tooltip disappears on mouseout
+                layer.on('mouseout', function(e) {
+                    if (!layer._tooltip.options.permanent) {
+                        layer.closeTooltip();
+                    }
+                });
+            }
+
+            // Determine the correct GeoJSON file for the selected year
+            var geojsonFile = `record_len_${year}.geojson`;
+            console.log(geojsonFile)
+            // Load GeoJSON and apply styling
+            fetch(`record_len/${geojsonFile}`)
+                .then(response => response.json())
+                .then(data => {
+                    L.geoJSON(data, {
+                        style: style,
+                        onEachFeature: onEachFeature // Attach tooltips
+                     }).addTo(map);
+                })
+                .catch(error => console.error('Error loading GeoJSON:', error));
+        }
+
+        // Initially load the GeoJSON for first map
+        loadGeoJSON('1d');
+
+        // Update the map when the user selects a different year
+        document.getElementById('year-select').addEventListener('change', function(event) {
+            loadGeoJSON(event.target.value);
+        });
+    </script>
+
+</body>
+</html>
