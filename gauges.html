@@ -31,7 +31,7 @@
         <button id="toggle-grid-points" style="margin: 10px; padding: 10px; font-size: 14px;">
             Show Grid Points
         </button>
-        <h2 style="flex-grow: 1; text-align: center; margin: 0; margin-left: -20px;">Rain gauges (1 day)</h2>
+        <h2 style="flex-grow: 1; text-align: left; margin: 0; margin-left: 40px;">Rain gauges (1 day)</h2>
 
     </div>
 
@@ -220,13 +220,21 @@
 
             gridLayer = L.geoJSON({ type: "FeatureCollection", features: filteredFeatures }, {
                 pointToLayer: function (feature, latlng) {
+                    // Format tooltip content
+                    let tooltipContent = `
+                        <strong>${feature.properties.SITE_NAME}</strong><br>
+                        <b>Site ID:</b> ${feature.properties.SITE_ID}<br>
+                        <b>Data Coverage:</b> ${feature.properties.DATA_PCT}%<br>
+                        <b>Start Date:</b> ${new Date(feature.properties.START_DATE).toLocaleDateString()}<br>
+                        <b>End Date:</b> ${new Date(feature.properties.END_DATE).toLocaleDateString()}
+                    `;
                     return L.circleMarker(latlng, {
-                        radius: 5,
-                        fillColor: "blue",
+                        radius: 8,
+                        fillColor: "none",
                         color: "black",
-                        weight: 1,
-                        fillOpacity: 0.8
-                    }).bindTooltip(feature.properties.name || "Grid Point", { permanent: false });
+                        weight: 0.5,
+                        fillOpacity: 0
+                    }).bindTooltip(tooltipContent, { permanent: false });
                 }
             }).addTo(map);
 
