@@ -88,14 +88,15 @@
 
     <script>
         // Initialize the map with EPSG:4326 CRS (WGS84)
+        // Initialize the map
         var map = L.map('map').setView([53.5074, -0.8], 5);  // Set initial view to London (lat, lng)
 
-        // Set the tile layer (OpenStreetMap or your own tile service)
+        // Set the tile layer (OpenStreetMap)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Function to load GeoJSON based on the year selected
+        // Function to load GeoJSON based on the selected year
         function loadGeoJSON(year) {
             // Clear existing GeoJSON layers
             map.eachLayer(function(layer) {
@@ -103,26 +104,6 @@
                     map.removeLayer(layer);
                 }
             });
-
-            function getColor(value) {
-                if (value === null || value === undefined) return 'transparent'; // Hide if no value
-
-                // Define a range of colors from light purple to dark purple
-                const colors = [
-                    '#f2f0f7', '#e0d9f4', '#d0bdf0', '#c1a1ec', '#b384e8', // 0-5
-                    '#a26ce4', '#9147e0', '#8030dc', '#6f1ad7', '#5e00d2', // 6-10
-                    '#4d00cc', '#3c00c6', '#2b00c0', '#1a00ba', '#0900b4', // 11-15
-                    '#0b00a7', '#1b009a', '#2b008d', '#3b007f', '#4b006a', // 16-20
-                    '#5b0055', '#6b0040', '#7b002b', '#8b0016', '#9b0000', // 21-25
-                    '#9b0000', '#8b1c00', '#7b3900', '#6b5500', '#5b7100', // 26-30
-                    '#4b8d00', '#3b9900', '#2ba500', '#1b6100', '#0b1d00'  // 31-35
-                ];
-
-                value = Math.max(0, Math.min(35, value)); // Keep values in range 0 to 35
-
-                return colors[Math.floor(value)]; // Map value 0-35 to the color array
-            }
-
 
             // Function to style each feature
             function style(feature) {
@@ -136,31 +117,47 @@
                 };
             }
 
-           // Add tooltips on hover and make it permanent on click
-           function onEachFeature(feature, layer) {
-                let tooltip;  // Variable to store the tooltip for each polygon
+            // Function to get color based on data value
+            function getColor(value) {
+                if (value === null || value === undefined) return 'transparent'; // Hide if no value
+                const colors = [
+                    '#f2f0f7', '#e0d9f4', '#d0bdf0', '#c1a1ec', '#b384e8',
+                    '#a26ce4', '#9147e0', '#8030dc', '#6f1ad7', '#5e00d2',
+                    '#4d00cc', '#3c00c6', '#2b00c0', '#1a00ba', '#0900b4',
+                    '#0b00a7', '#1b009a', '#2b008d', '#3b007f', '#4b006a',
+                    '#5b0055', '#6b0040', '#7b002b', '#8b0016', '#9b0000',
+                    '#9b0000', '#8b1c00', '#7b3900', '#6b5500', '#5b7100',
+                    '#4b8d00', '#3b9900', '#2ba500', '#1b6100', '#0b1d00'
+                ];
+                value = Math.max(0, Math.min(35, value)); // Ensure value is within bounds
+                return colors[Math.floor(value)];
+            }
 
-                let numGauges = feature.properties.num_gauges;
-                let tooltipLabel = numGauges !== null ? 
-                    `Number of gauges: ${numGauges}` : 
-                    "No rain gauges";
-                if (numGauges == 0) {
-                        tooltipLabel = "No rain gauges";
+            // Handle tooltip visibility
+            let tooltipsVisible = true;
+
+            // Add tooltips on hover and make it permanent on click
+            function onEachFeature(feature, layer) {
+                let tooltipLabel = feature.properties.num_gauges !== null ?
+                    `Number of gauges: ${feature.properties.num_gauges}` : "No rain gauges";
+                if (feature.properties.num_gauges == 0) {
+                    tooltipLabel = "No rain gauges";
                 }
-    
 
                 // Tooltip on hover (brief)
                 layer.on('mouseover', function(e) {
-                    tooltip = layer.bindTooltip(tooltipLabel, {
-                        permanent: false,        // Tooltip disappears after hover ends
-                        direction: "top",
-                        offset: [0, -5]
-                    }).openTooltip();
+                    if (tooltipsVisible) {  // Only show the tooltip if tooltips are visible
+                        layer.bindTooltip(tooltipLabel, {
+                            permanent: false,  // Tooltip visibility controlled here
+                            direction: "top",
+                            offset: [0, -5]
+                        }).openTooltip();
+                    }
                 });
 
                 // Tooltip disappears on mouseout
                 layer.on('mouseout', function(e) {
-                    if (!layer._tooltip.options.permanent) {
+                    if (!tooltipsVisible) {
                         layer.closeTooltip();
                     }
                 });
@@ -175,15 +172,16 @@
                 .then(data => {
                     L.geoJSON(data, {
                         style: style,
-                        onEachFeature: onEachFeature // Attach tooltips
-                     }).addTo(map);
+                        onEachFeature: onEachFeature
+                    }).addTo(map);
                 })
                 .catch(error => console.error('Error loading GeoJSON:', error));
         }
 
-        var gridData = null; // Store loaded GeoJSON data
-        var gridLayer = null; // Store grid layer to toggle visibility
-        var gridDataLoaded = false; // Track if data is already loaded
+        // Toggle Grid Points and Tooltips
+        let gridData = null;
+        let gridLayer = null;
+        let gridDataLoaded = false;
 
         function toggleGridPoints() {
             let selectedYear = parseInt(document.getElementById('year-select').value);
@@ -192,13 +190,13 @@
                 map.removeLayer(gridLayer);
                 gridLayer = null;
                 document.getElementById('toggle-grid-points').textContent = "Show Grid Points";
+                toggleGriddedTooltips(true);  // Show tooltips on gridded data layer
             } else {
                 if (!gridDataLoaded) {
-                    // Fetch GeoJSON only the first time
-                    fetch('uk_gauges/GB_rain_gauges_1d_4326.geojson') // Adjust path if needed
+                    fetch('uk_gauges/GB_rain_gauges_1d_4326.geojson') // Fetch data only once
                         .then(response => response.json())
                         .then(data => {
-                            gridData = data; // Store full dataset
+                            gridData = data;
                             gridDataLoaded = true;
                             showFilteredGridPoints(selectedYear);
                         })
@@ -213,14 +211,13 @@
             if (!gridData) return;
 
             let filteredFeatures = gridData.features.filter(feature => {
-                let startDate = parseInt(feature.properties.START_DATE);
-                let endDate = parseInt(feature.properties.END_DATE);
+                let startDate = new Date(feature.properties.START_DATE).getFullYear();
+                let endDate = new Date(feature.properties.END_DATE).getFullYear();
                 return selectedYear >= startDate && selectedYear <= endDate;
             });
 
             gridLayer = L.geoJSON({ type: "FeatureCollection", features: filteredFeatures }, {
                 pointToLayer: function (feature, latlng) {
-                    // Format tooltip content
                     let tooltipContent = `
                         <strong>${feature.properties.SITE_NAME}</strong><br>
                         <b>Site ID:</b> ${feature.properties.SITE_ID}<br>
@@ -232,30 +229,49 @@
                         radius: 8,
                         fillColor: "none",
                         color: "black",
-                        weight: 0.5,
+                        weight: 2,
                         fillOpacity: 0
                     }).bindTooltip(tooltipContent, { permanent: false });
                 }
             }).addTo(map);
 
             document.getElementById('toggle-grid-points').textContent = "Hide Grid Points";
+            toggleGriddedTooltips(false);  // Hide gridded tooltips when grid points are shown
         }
 
+        // Toggle gridded tooltips visibility
+        function toggleGriddedTooltips(visible) {
+            tooltipsVisible = visible;
+            if (gridLayer) {
+                gridLayer.eachLayer(layer => {
+                    if (layer.getTooltip()) {
+                        if (visible) {
+                            layer.openTooltip();  // Show tooltips
+                        } else {
+                            layer.closeTooltip();  // Hide tooltips
+                        }
+                    }
+                });
+            }
+        }
+
+        // Initially load the GeoJSON for first map
+        loadGeoJSON('2023');
+
+        // Event listener for year change
+        document.getElementById('year-select').addEventListener('change', function(event) {
+            loadGeoJSON(event.target.value);
+        });
+        
         // Ensure points update when year changes
-        document.getElementById('year-select').addEventListener('change', function () {
+        document.getElementById('year-select').addEventListener('change', function() {
             if (gridLayer) {
                 map.removeLayer(gridLayer);
                 gridLayer = null;
                 showFilteredGridPoints(parseInt(this.value));
             }
         });
-        // Initially load the GeoJSON for first map
-        loadGeoJSON('2023');
 
-        // Update the map when the user selects a different year
-        document.getElementById('year-select').addEventListener('change', function(event) {
-            loadGeoJSON(event.target.value);
-        });
         document.getElementById('toggle-grid-points').addEventListener('click', toggleGridPoints);
 
     </script>
