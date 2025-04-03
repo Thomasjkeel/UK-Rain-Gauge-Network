@@ -26,6 +26,8 @@
     <div style="display: flex; align-items: center; gap: 10px;">
         <label for="year-select" style="font-size: 14px;"><h2>Select Year:</h2></label>
         <select id="year-select" style="font-size: 14px; padding: 5px; width: auto;"></select>
+        <label for="data-select" style="font-size: 14px;"><h2>Select data:</h2></label>
+        <select id="data-select" style="font-size: 14px; padding: 5px; width: auto;"></select>
         <h2 style="flex-grow: 1; text-align: center; margin: 0; margin-left: -20px;">Rain gauges (1 day)</h2>
 
     </div>
@@ -51,6 +53,28 @@
             console.log("Selected Year: " + yearSelect.value);
             // You can trigger other functions or update data here based on the selected year
         });
+
+
+        const dataSelect = document.getElementById('data-select');
+        const dataOptions = ["Gauges", "1 km grid", "5 km grid"];
+
+        dataOptions.forEach(dataOpt => {
+            let option = document.createElement('option');
+            option.value = dataOpt;
+            option.textContent = dataOpt;
+
+            // Set default selection to "1d"
+            if (dataOpt === "1 km grid") {
+                option.selected = true;
+            }
+            dataSelect.appendChild(option);
+        });
+        // Handle selection change
+        dataSelect.addEventListener('change', function() {
+            console.log("Selected data: " + dataSelect.value);
+            // Call your update function here
+        });
+
     </script>
 
     <!-- Map container -->
@@ -143,7 +167,7 @@
             var geojsonFile = `num_gauges_${year}.geojson`;
 
             // Load GeoJSON and apply styling
-            fetch(`num_gauges_maps/${geojsonFile}`)
+            fetch(`num_gauges_gridded/${geojsonFile}`)
                 .then(response => response.json())
                 .then(data => {
                     L.geoJSON(data, {

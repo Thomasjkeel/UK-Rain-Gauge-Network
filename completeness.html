@@ -153,7 +153,7 @@
             var geojsonFile = `completeness_maps_${year}.geojson`;
 
             // Load GeoJSON and apply styling
-            fetch(`completeness_maps/${geojsonFile}`)
+            fetch(`gauge_completeness_gridded/${geojsonFile}`)
                 .then(response => response.json())
                 .then(data => {
                     L.geoJSON(data, {
