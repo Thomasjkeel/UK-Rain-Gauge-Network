@@ -26,8 +26,11 @@
     <div style="display: flex; align-items: center; gap: 10px;">
         <label for="year-select" style="font-size: 14px;"><h2>Select Year:</h2></label>
         <select id="year-select" style="font-size: 14px; padding: 5px; width: auto;"></select>
-        <label for="data-select" style="font-size: 14px;"><h2>Select data:</h2></label>
-        <select id="data-select" style="font-size: 14px; padding: 5px; width: auto;"></select>
+        <label for="grid-select" style="font-size: 14px;"><h2>Select grid:</h2></label>
+        <select id="grid-select" style="font-size: 14px; padding: 5px; width: auto;"></select>
+        <button id="toggle-grid-points" style="margin: 10px; padding: 10px; font-size: 14px;">
+            Show Grid Points
+        </button>
         <h2 style="flex-grow: 1; text-align: center; margin: 0; margin-left: -20px;">Rain gauges (1 day)</h2>
 
     </div>
@@ -55,23 +58,23 @@
         });
 
 
-        const dataSelect = document.getElementById('data-select');
-        const dataOptions = ["Gauges", "1 km grid", "5 km grid"];
+        const gridSelect = document.getElementById('grid-select');
+        const gridOptions = ["1 km grid", "5 km grid"];
 
-        dataOptions.forEach(dataOpt => {
+        gridOptions.forEach(grid => {
             let option = document.createElement('option');
-            option.value = dataOpt;
-            option.textContent = dataOpt;
+            option.value = grid;
+            option.textContent = grid;
 
             // Set default selection to "1d"
-            if (dataOpt === "1 km grid") {
+            if (grid === "1 km grid") {
                 option.selected = true;
             }
-            dataSelect.appendChild(option);
+            gridSelect.appendChild(option);
         });
         // Handle selection change
-        dataSelect.addEventListener('change', function() {
-            console.log("Selected data: " + dataSelect.value);
+        gridSelect.addEventListener('change', function() {
+            console.log("Selected data: " + gridSelect.value);
             // Call your update function here
         });
 
@@ -178,6 +181,66 @@
                 .catch(error => console.error('Error loading GeoJSON:', error));
         }
 
+        var gridData = null; // Store loaded GeoJSON data
+        var gridLayer = null; // Store grid layer to toggle visibility
+        var gridDataLoaded = false; // Track if data is already loaded
+
+        function toggleGridPoints() {
+            let selectedYear = parseInt(document.getElementById('year-select').value);
+
+            if (gridLayer) {
+                map.removeLayer(gridLayer);
+                gridLayer = null;
+                document.getElementById('toggle-grid-points').textContent = "Show Grid Points";
+            } else {
+                if (!gridDataLoaded) {
+                    // Fetch GeoJSON only the first time
+                    fetch('uk_gauges/GB_rain_gauges_1d_4326.geojson') // Adjust path if needed
+                        .then(response => response.json())
+                        .then(data => {
+                            gridData = data; // Store full dataset
+                            gridDataLoaded = true;
+                            showFilteredGridPoints(selectedYear);
+                        })
+                        .catch(error => console.error('Error loading GeoJSON:', error));
+                } else {
+                    showFilteredGridPoints(selectedYear);
+                }
+            }
+        }
+
+        function showFilteredGridPoints(selectedYear) {
+            if (!gridData) return;
+
+            let filteredFeatures = gridData.features.filter(feature => {
+                let startDate = parseInt(feature.properties.START_DATE);
+                let endDate = parseInt(feature.properties.END_DATE);
+                return selectedYear >= startDate && selectedYear <= endDate;
+            });
+
+            gridLayer = L.geoJSON({ type: "FeatureCollection", features: filteredFeatures }, {
+                pointToLayer: function (feature, latlng) {
+                    return L.circleMarker(latlng, {
+                        radius: 5,
+                        fillColor: "blue",
+                        color: "black",
+                        weight: 1,
+                        fillOpacity: 0.8
+                    }).bindTooltip(feature.properties.name || "Grid Point", { permanent: false });
+                }
+            }).addTo(map);
+
+            document.getElementById('toggle-grid-points').textContent = "Hide Grid Points";
+        }
+
+        // Ensure points update when year changes
+        document.getElementById('year-select').addEventListener('change', function () {
+            if (gridLayer) {
+                map.removeLayer(gridLayer);
+                gridLayer = null;
+                showFilteredGridPoints(parseInt(this.value));
+            }
+        });
         // Initially load the GeoJSON for first map
         loadGeoJSON('2023');
 
@@ -185,6 +248,8 @@
         document.getElementById('year-select').addEventListener('change', function(event) {
             loadGeoJSON(event.target.value);
         });
+        document.getElementById('toggle-grid-points').addEventListener('click', toggleGridPoints);
+
     </script>
 
 </body>
