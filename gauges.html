@@ -29,7 +29,7 @@
         <label for="grid-select" style="font-size: 14px;"><h2>Select grid:</h2></label>
         <select id="grid-select" style="font-size: 14px; padding: 5px; width: auto;"></select>
         <button id="toggle-grid-points" style="margin: 10px; padding: 10px; font-size: 14px;">
-            Show Grid Points
+            Show Rain Gauges
         </button>
         <h2 style="flex-grow: 1; text-align: left; margin: 0; margin-left: 40px;">Rain gauges (1 day)</h2>
 
@@ -189,7 +189,7 @@
             if (gridLayer) {
                 map.removeLayer(gridLayer);
                 gridLayer = null;
-                document.getElementById('toggle-grid-points').textContent = "Show Grid Points";
+                document.getElementById('toggle-grid-points').textContent = "Show Rain Gauges";
                 toggleGriddedTooltips(true);  // Show tooltips on gridded data layer
             } else {
                 if (!gridDataLoaded) {
@@ -235,7 +235,7 @@
                 }
             }).addTo(map);
 
-            document.getElementById('toggle-grid-points').textContent = "Hide Grid Points";
+            document.getElementById('toggle-grid-points').textContent = "Hide Rain Gauges";
             toggleGriddedTooltips(false);  // Hide gridded tooltips when grid points are shown
         }
 
@@ -262,7 +262,7 @@
         document.getElementById('year-select').addEventListener('change', function(event) {
             loadGeoJSON(event.target.value);
         });
-        
+
         // Ensure points update when year changes
         document.getElementById('year-select').addEventListener('change', function() {
             if (gridLayer) {
