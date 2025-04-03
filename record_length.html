@@ -121,9 +121,14 @@
            function onEachFeature(feature, layer) {
                 let tooltip;  // Variable to store the tooltip for each polygon
 
+                let recordLen = feature.properties.record_len;
+                let tooltipLabel = recordLen !== null ? 
+                    `Max record length: ${recordLen.toFixed(2)} years` : 
+                    "No rain gauges";
+
                 // Tooltip on hover (brief)
                 layer.on('mouseover', function(e) {
-                    tooltip = layer.bindTooltip(`Max record length: ${feature.properties.record_len} years`, {
+                    tooltip = layer.bindTooltip(tooltipLabel, {
                         permanent: false,        // Tooltip disappears after hover ends
                         direction: "top",
                         offset: [0, -5]

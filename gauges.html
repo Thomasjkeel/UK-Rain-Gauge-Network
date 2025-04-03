@@ -113,9 +113,18 @@
            function onEachFeature(feature, layer) {
                 let tooltip;  // Variable to store the tooltip for each polygon
 
+                let numGauges = feature.properties.num_gauges;
+                let tooltipLabel = numGauges !== null ? 
+                    `Number of gauges: ${numGauges}` : 
+                    "No rain gauges";
+                if (numGauges == 0) {
+                        tooltipLabel = "No rain gauges";
+                }
+    
+
                 // Tooltip on hover (brief)
                 layer.on('mouseover', function(e) {
-                    tooltip = layer.bindTooltip(`Number of gauges: ${feature.properties.num_gauges}`, {
+                    tooltip = layer.bindTooltip(tooltipLabel, {
                         permanent: false,        // Tooltip disappears after hover ends
                         direction: "top",
                         offset: [0, -5]

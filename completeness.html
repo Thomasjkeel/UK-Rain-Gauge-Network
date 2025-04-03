@@ -123,14 +123,23 @@
            function onEachFeature(feature, layer) {
                 let tooltip;  // Variable to store the tooltip for each polygon
 
+                let completeVal = feature.properties.completeness;
+                let tooltipLabel = completeVal !== null ? 
+                    `Mean completness: ${completeVal.toFixed(2)} %` : 
+                    "No rain gauges";
+                if (completeVal == 0) {
+                    tooltipLabel = "No rain gauges";
+                }
+
                 // Tooltip on hover (brief)
                 layer.on('mouseover', function(e) {
-                    tooltip = layer.bindTooltip(`Mean gauge completeness: ${feature.properties.completeness}`, {
+                    tooltip = layer.bindTooltip(tooltipLabel, {
                         permanent: false,        // Tooltip disappears after hover ends
                         direction: "top",
                         offset: [0, -5]
                     }).openTooltip();
                 });
+
 
                 // Tooltip disappears on mouseout
                 layer.on('mouseout', function(e) {
