@@ -140,7 +140,7 @@
             }
 
             // Determine the correct GeoJSON file for the selected year
-            var geojsonFile = `num_gauges_${year}.geojson`;
+            var geojsonFile = `daily/num_gauges_${year}.geojson`;
 
             // Load GeoJSON and apply styling
             fetch(`num_gauges_gridded/${geojsonFile}`)
@@ -251,6 +251,6 @@
         document.getElementById('toggle-grid-points').addEventListener('click', toggleGridPoints);
 
     </script>
-<div>If you cannot see the rain gauge labels, click hide and the show again.</div>
+<div>The rain gauge labels will go behind the grid when you change year, so please click hide and the show again.</div>
 </body>
 </html>
