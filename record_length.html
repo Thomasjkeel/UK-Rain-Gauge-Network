@@ -123,8 +123,11 @@
 
                 let recordLen = feature.properties.record_len;
                 let tooltipLabel = recordLen !== null ? 
-                    `Max record length: ${recordLen.toFixed(2)} years` : 
-                    "No rain gauges";
+                    `Max record length: ${recordLen.toFixed(2)} years<br>
+                    Start Date: ${feature.properties.START_DATE}<br>
+                    End Date: ${feature.properties.END_DATE}<br>
+                    Data Completeness: ${feature.properties.mean_competeness.toFixed(2)}%`
+                    : "No rain gauges";
 
                 // Tooltip on hover (brief)
                 layer.on('mouseover', function(e) {
