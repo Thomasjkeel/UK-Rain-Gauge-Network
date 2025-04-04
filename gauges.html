@@ -26,6 +26,13 @@
     <div style="display: flex; align-items: center; gap: 10px;">
         <label for="year-select" style="font-size: 14px;"><h2>Select year:</h2></label>
         <select id="year-select" style="font-size: 14px; padding: 5px; width: auto;"></select>
+        <label for="data-select" style="font-size: 14px;"><h2>Select data:</h2></label>
+        <select id="data-select" style="font-size: 14px; padding: 5px; width: auto;">
+            <option value="15mins">15 Minutes</option>
+            <option value="hourly">Hourly (1h)</option>
+            <option value="daily" selected>Daily (1d)</option>
+            <option value="monthly">Monthly (1mo)</option>
+        </select>
         <button id="toggle-grid-points" style="margin: 10px; padding: 10px; font-size: 14px;">
             Show Rain Gauges
         </button>
@@ -73,7 +80,7 @@
         }).addTo(map);
 
         // Function to load GeoJSON based on the selected year
-        function loadGeoJSON(year) {
+        function loadGeoJSON(year, frequency) {
             // Clear existing GeoJSON layers
             map.eachLayer(function(layer) {
                 if (layer instanceof L.GeoJSON) {
@@ -140,10 +147,10 @@
             }
 
             // Determine the correct GeoJSON file for the selected year
-            var geojsonFile = `daily/num_gauges_${year}.geojson`;
+            var geojsonFile = `num_gauges_gridded/${frequency}/num_gauges_${year}_${frequency}.geojson`;
 
             // Load GeoJSON and apply styling
-            fetch(`num_gauges_gridded/${geojsonFile}`)
+            fetch(geojsonFile)
                 .then(response => response.json())
                 .then(data => {
                     L.geoJSON(data, {
@@ -161,25 +168,22 @@
 
         function toggleGridPoints() {
             let selectedYear = parseInt(document.getElementById('year-select').value);
-
+            let selectedFrequency = document.getElementById('data-select').value;
+            var rainGaugePoints = `uk_gauges/GB_rain_gauges_${selectedFrequency}_4326.geojson`
             if (gridLayer) {
                 map.removeLayer(gridLayer);
                 gridLayer = null;
                 document.getElementById('toggle-grid-points').textContent = "Show Rain Gauges";
                 toggleGriddedTooltips(true);  // Show tooltips on gridded data layer
             } else {
-                if (!gridDataLoaded) {
-                    fetch('uk_gauges/GB_rain_gauges_1d_4326.geojson') // Fetch data only once
-                        .then(response => response.json())
-                        .then(data => {
-                            gridData = data;
-                            gridDataLoaded = true;
-                            showFilteredGridPoints(selectedYear);
-                        })
-                        .catch(error => console.error('Error loading GeoJSON:', error));
-                } else {
-                    showFilteredGridPoints(selectedYear);
-                }
+                fetch(rainGaugePoints) // Fetch data only once
+                    .then(response => response.json())
+                    .then(data => {
+                        gridData = data;
+                        gridDataLoaded = true;
+                        showFilteredGridPoints(selectedYear);
+                    })
+                    .catch(error => console.error('Error loading GeoJSON:', error));
             }
         }
 
@@ -231,12 +235,30 @@
             }
         }
 
+        function resetGridPoints() {
+            if (gridLayer) {
+                map.removeLayer(gridLayer);
+                gridLayer = null;
+                document.getElementById('toggle-grid-points').textContent = "Show Rain Gauges";
+            }
+        }
+
         // Initially load the GeoJSON for first map
-        loadGeoJSON('2023');
+        loadGeoJSON('2023', 'daily');
 
         // Event listener for year change
-        document.getElementById('year-select').addEventListener('change', function(event) {
-            loadGeoJSON(event.target.value);
+        document.getElementById('year-select').addEventListener('change', function() {
+            let selectedYear = this.value;
+            let selectedFrequency = document.getElementById('data-select').value;
+            resetGridPoints();  // Turn off grid points
+            loadGeoJSON(selectedYear, selectedFrequency);
+        });
+
+        document.getElementById('data-select').addEventListener('change', function() {
+            let selectedYear = document.getElementById('year-select').value;
+            let selectedFrequency = this.value;
+            resetGridPoints();  // Turn off grid points when frequency changes
+            loadGeoJSON(selectedYear, selectedFrequency);
         });
 
         // Ensure points update when year changes
@@ -244,13 +266,13 @@
             if (gridLayer) {
                 map.removeLayer(gridLayer);
                 gridLayer = null;
-                showFilteredGridPoints(parseInt(this.value));
+                showFilteredGridPoints(this.value);
             }
         });
 
         document.getElementById('toggle-grid-points').addEventListener('click', toggleGridPoints);
 
     </script>
-<div>The rain gauge labels will go behind the grid when you change year, so please click hide and the show again.</div>
+<div>The rain gauge data may not be complete.</div>
 </body>
 </html>
