@@ -81,7 +81,7 @@
                 if (value === null || value === undefined) return 'transparent'; // Hide if no value
             
                 // Normalize value between 0 and 1 (0 to 160)
-                const normalizedValue = Math.min(Math.max(value, 0), 160) / 160;
+                const normalizedValue = Math.min(Math.max(value, 0), maxRecordLen) / maxRecordLen;
             
                 // Viridis color scale (RGB values extracted from matplotlib's viridis)
                 const viridisColors = [
@@ -123,10 +123,10 @@
 
                 let recordLen = feature.properties.record_len;
                 let tooltipLabel = recordLen !== null ? 
-                    `Max record length: ${recordLen.toFixed(2)} years<br>
-                    Start Date (min): ${feature.properties.START_DATE}<br>
-                    End Date (max): ${feature.properties.END_DATE}<br>
-                    Data Completeness (mean): ${feature.properties.mean_competeness.toFixed(2)}%`
+                    `<strong>Max record length:</strong> ${recordLen.toFixed(2)} years<br>
+                    <strong>Start Date (min):</strong> ${new Date(feature.properties.START_DATE).toLocaleDateString()}<br>
+                    <strong>End Date (max):</strong> ${new Date(feature.properties.END_DATE).toLocaleDateString()}<br>
+                    <strong>Data Completeness (mean):</strong> ${feature.properties.mean_completeness.toFixed(2)}%`
                     : "No rain gauges";
 
                 // Tooltip on hover (brief)
@@ -153,6 +153,8 @@
             fetch(`record_len/${geojsonFile}`)
                 .then(response => response.json())
                 .then(data => {
+                    // Find max record_len in dataset
+                    maxRecordLen = Math.max(...data.features.map(f => f.properties.record_len || 0));
                     L.geoJSON(data, {
                         style: style,
                         onEachFeature: onEachFeature // Attach tooltips
