@@ -28,8 +28,7 @@
         <select id="year-select" style="font-size: 14px; padding: 5px; width: auto;"></select>
         <label for="data-select" style="font-size: 14px;"><h2>Select data:</h2></label>
         <select id="data-select" style="font-size: 14px; padding: 5px; width: auto;">
-            <option value="15mins">15 Minutes</option>
-            <option value="hourly">Hourly (1h)</option>
+            <option value="subdaily">Sub-daily (15min & 1h)</option>
             <option value="daily" selected>Daily (1d)</option>
             <option value="monthly">Monthly (1mo)</option>
         </select>
@@ -190,21 +189,54 @@
         function showFilteredGridPoints(selectedYear) {
             if (!gridData) return;
 
-            let filteredFeatures = gridData.features.filter(feature => {
-                let startDate = new Date(feature.properties.START_DATE).getFullYear();
-                let endDate = new Date(feature.properties.END_DATE).getFullYear();
-                return selectedYear >= startDate && selectedYear <= endDate;
-            });
+            let selectedFrequency = document.getElementById('data-select').value;
+            let filteredFeatures
+            if (selectedFrequency === 'subdaily'){
+                filteredFeatures = gridData.features.filter(feature => {
+                    let start15m = feature.properties.S_DATE_15m ? new Date(feature.properties.S_DATE_15m).getFullYear() : null;
+                    let end15m = feature.properties.E_DATE_15m ? new Date(feature.properties.E_DATE_15m).getFullYear() : null;
+                    let start1h = feature.properties.S_DATE_1h ? new Date(feature.properties.S_DATE_1h).getFullYear() : null;
+                    let end1h = feature.properties.E_DATE_1h ? new Date(feature.properties.E_DATE_1h).getFullYear() : null;
+                    return (
+                        (start15m && end15m && selectedYear >= start15m && selectedYear <= end15m) ||
+                        (start1h && end1h && selectedYear >= start1h && selectedYear <= end1h)
+                    );
+                });
+            } else {
+                filteredFeatures = gridData.features.filter(feature => {
+                    let startDate = new Date(feature.properties.START_DATE).getFullYear();
+                    let endDate = new Date(feature.properties.END_DATE).getFullYear();
+                    return selectedYear >= startDate && selectedYear <= endDate;
+                });
+            }
 
             gridLayer = L.geoJSON({ type: "FeatureCollection", features: filteredFeatures }, {
                 pointToLayer: function (feature, latlng) {
-                    let tooltipContent = `
+                    let tooltipContent
+                    if (selectedFrequency === 'subdaily'){
+                        tooltipContent = `<strong>${feature.properties.SITE_NAME}</strong><br>`;
+                        tooltipContent += `<b>Site ID:</b> ${feature.properties.SITE_ID}<br>`;
+                        tooltipContent += feature.properties.PCT_15m != null
+                        ? `<b>Data Completeness (15min):</b> ${feature.properties.PCT_15m}%<br>` : '';
+                        tooltipContent += feature.properties.S_DATE_15m
+                        ? `<b>Start Date (15min):</b> ${new Date(feature.properties.S_DATE_15m).toLocaleDateString()}<br>` : '';
+                        tooltipContent += feature.properties.E_DATE_15m
+                        ? `<b>End Date (15min):</b> ${new Date(feature.properties.E_DATE_15m).toLocaleDateString()}<br>` : '';
+                        tooltipContent += feature.properties.PCT_1h != null
+                        ? `<b>Data Completeness (1h):</b> ${feature.properties.PCT_1h}%<br>` : '';
+                        tooltipContent += feature.properties.S_DATE_1h
+                        ? `<b>Start Date (1h):</b> ${new Date(feature.properties.S_DATE_1h).toLocaleDateString()}<br>` : '';
+                        tooltipContent += feature.properties.E_DATE_1h
+                        ? `<b>End Date (1h):</b> ${new Date(feature.properties.E_DATE_1h).toLocaleDateString()}` : '';
+                    } else {
+                        tooltipContent = `
                         <strong>${feature.properties.SITE_NAME}</strong><br>
                         <b>Site ID:</b> ${feature.properties.SITE_ID}<br>
                         <b>Data Completeness:</b> ${feature.properties.DATA_PCT}%<br>
                         <b>Start Date:</b> ${new Date(feature.properties.START_DATE).toLocaleDateString()}<br>
                         <b>End Date:</b> ${new Date(feature.properties.END_DATE).toLocaleDateString()}
                     `;
+                    }
                     return L.circleMarker(latlng, {
                         radius: 8,
                         fillColor: "none",
