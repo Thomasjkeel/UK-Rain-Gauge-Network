@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK Rain Gauges - Quality Control summary</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- Styles for map and dropdown -->
+    <style>
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+
+        select {
+            margin: 20px;
+            padding: 10px;
+        }
+        .legend {
+            line-height: 18px;
+            color: #555;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            font-size: 12px;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <!-- Dropdown for selecting year -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <label for="qc-select" style="font-size: 14px;"><h2>Select QC method:</h2></label>
+        <select id="qc-select" style="font-size: 14px; padding: 5px; width: auto;">
+            <option value="perc_flagged">perc_flagged</option>
+            <option value="total_flagged_rows">total_flagged_rows</option>
+            <option value="total_rows">percentiles_zero</option>
+            <option value="percentiles_zero">total_rows</option>
+            <option value="k-largest_zero">k-largest_zero</option>
+            <option value="days_of_week">days_of_week</option>
+            <option value="hours_of_day">hours_of_day</option>
+            <option value="intermittency">intermittency</option>
+            <option value="min_val_change">min_val_change</option>
+            <option value="r99p">r99p</option>
+            <option value="prcptot">prcptot</option>
+            <option value="timings_offset">timings_offset</option>
+            <option value="affinity_index">affinity_index</option>
+            <option value="pearson_corr">pearson_corr</option>
+            <option value="world_record_check">world_record_check</option>
+            <option value="rx1day_check">rx1day_check</option>
+            <option value="dry_spell_flag">dry_spell_flag</option>
+            <option value="monthly_accumulation">monthly_accumulation</option>
+            <option value="streak_flag1">streak_flag1</option>
+            <option value="streak_flag3">streak_flag3</option>
+            <option value="streak_flag4">streak_flag4</option>
+            <option value="streak_flag5">streak_flag5</option>
+            <option value="wet_spell_flag_hourly">wet_spell_flag_hourly</option>
+            <option value="dry_spell_flag_hourly">dry_spell_flag_hourly</option>
+        </select>
+        <label for="data-select" style="font-size: 14px;"><h2>Select data:</h2></label>
+        <select id="data-select" style="font-size: 14px; padding: 5px; width: auto;">
+            <option value="15min">15 mins</option>
+            <option value="1hr">1 hour</option>
+        </select>
+        <button id="toggle-grid-points" style="margin: 10px; padding: 10px; font-size: 14px;">
+            Show Rain Gauges
+        </button>
+        <h2 style="flex-grow: 1; text-align: center; margin: 0;">Gauges grouped into Middle-layer Super Output Areas (MSOAs)</h2>
+
+    </div>
+
+    <script>
+        // add listener for QC method select
+        const qcSelect = document.getElementById('qc-select');
+
+        // Handle selection change (you can customize the behavior here)
+        qcSelect.addEventListener('change', function() {
+            console.log("Selected QC: " + qcSelect.value);
+            // You can trigger other functions or update data here based on the selected year
+        });
+    </script>
+
+    <!-- Map container -->
+    <div id="map"></div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script>
+        // Initialize the map with EPSG:4326 CRS (WGS84)
+        // Initialize the map
+        var map = L.map('map').setView([53.5074, -0.8], 5);  // Set initial view to London (lat, lng)
+
+        // Set the tile layer (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Function to get color based on data value
+        function getColor(value) {
+            if (value === null || value === undefined) return 'transparent';
+
+            const colors = [
+                '#f2e5ff', '#e5ccff', '#d9b3ff', '#cc99ff', '#bf80ff',
+                '#b366ff', '#a64dff', '#9933ff', '#8000ff', '#6600cc'
+            ];
+
+            const bin = Math.floor(value / 10); // or better: based on min/max range
+            const index = Math.max(0, Math.min(colors.length - 1, bin));
+            return colors[index];
+        }
+
+        // Function to load GeoJSON based on the selected year
+        function loadGeoJSON(selectedQC, frequency) {
+            // Clear existing GeoJSON layers
+            map.eachLayer(function(layer) {
+                if (layer instanceof L.GeoJSON) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            // Function to style each feature
+            function style(feature) {
+                const value = feature.properties[selectedQC];
+                return {
+                    fillColor: getColor(value), // Color based on selected property
+                    weight: 0,
+                    opacity: 1,
+                    color: 'black',
+                    dashArray: '3',
+                    fillOpacity: 0.7
+                };
+            }
+
+            // Handle tooltip visibility
+            let tooltipsVisible = true;
+
+            // Add tooltips on hover and make it permanent on click
+            function onEachFeature(feature, layer) {
+                const value = feature.properties[selectedQC];
+                let tooltipLabel;
+
+                if (value === null || value === undefined) {
+                    tooltipLabel = "No data";
+                } else if (value === 0) {
+                    tooltipLabel = "No rain gauges";
+                } else {
+                    tooltipLabel = `Number of gauges: ${value}`;
+                }
+
+                // Tooltip on hover
+                layer.on('mouseover', function(e) {
+                    if (tooltipsVisible) {
+                        layer.bindTooltip(tooltipLabel, {
+                            permanent: false,
+                            direction: "top",
+                            offset: [0, -5]
+                        }).openTooltip();
+                    }
+                });
+
+                // Hide tooltip on mouseout
+                layer.on('mouseout', function(e) {
+                    if (!tooltipsVisible) {
+                        layer.closeTooltip();
+                    }
+                });
+            }
+
+            // Determine the correct GeoJSON file
+            var geojsonFile = `qc_data/UK_${frequency}_QC_MSOA_max.geojson`;
+
+            // Load GeoJSON and apply styling
+            fetch(geojsonFile)
+                .then(response => response.json())
+                .then(data => {
+                    L.geoJSON(data, {
+                        style: style,
+                        onEachFeature: onEachFeature
+                    }).addTo(map);
+                    // === Calculate min and max for selectedQC field ===
+                    let values = data.features
+                        .map(f => f.properties[selectedQC])
+                        .filter(v => v !== null && v !== undefined);
+
+                    let min = Math.min(...values);
+                    let max = Math.max(...values);
+
+                    // === Call the legend function ===
+                    addLegend(selectedQC, min, max);
+                })
+                .catch(error => console.error('Error loading GeoJSON:', error));
+        }
+
+        // Toggle Grid Points and Tooltips
+        let gridData = null;
+        let gridLayer = null;
+        let gridDataLoaded = false;
+
+        function toggleGridPoints() {
+            let selectedFrequency = document.getElementById('data-select').value;
+            var rainGaugePoints = `qc_data/UK_${selectedFrequency}_QC_MSOA_max.geojson`
+            if (gridLayer) {
+                map.removeLayer(gridLayer);
+                gridLayer = null;
+                document.getElementById('toggle-grid-points').textContent = "Show Rain Gauges";
+                toggleGriddedTooltips(true);  // Show tooltips on gridded data layer
+            } else {
+                fetch(rainGaugePoints) // Fetch data only once
+                    .then(response => response.json())
+                    .then(data => {
+                        gridData = data;
+                        gridDataLoaded = true;
+                        showFilteredGridPoints(selectedFrequency);
+                    })
+                    .catch(error => console.error('Error loading GeoJSON:', error));
+            }
+        }
+
+        function showFilteredGridPoints(selectedFrequency) {
+            if (!gridData) return;
+            gridLayer = L.geoJSON({ type: "FeatureCollection", features: gridData.features}, {
+                pointToLayer: function (feature, latlng) {
+                    let tooltipContent = `
+                        <strong>${feature.properties.SITE_NAME}</strong><br>
+                        <b>Station ID ID:</b> ${feature.properties.station_id}<br>
+                        <b>Operator:</b> ${feature.properties.OPERATOR_ID}%<br>
+                        <b>Start Date:</b> ${new Date(feature.properties.start_datetime).toLocaleDateString()}<br>
+                        <b>End Date:</b> ${new Date(feature.properties.end_datetime).toLocaleDateString()}<br>
+                        <b>Completeness: </b>${feature.properties.COMPLETENESS}<br>
+                        <b>Flagged rows (%): </b>${feature.properties.perc_flagged}<br>
+                        <b>Number of nearby gauges (<30 km): </b>${feature.properties.num_nearby_gauges_30km}
+                    `;
+                    return L.circleMarker(latlng, {
+                        radius: 8,
+                        fillColor: "none",
+                        color: "black",
+                        weight: 2,
+                        fillOpacity: 0
+                    }).bindTooltip(tooltipContent, { permanent: false });
+                }
+            }).addTo(map);
+
+            document.getElementById('toggle-grid-points').textContent = "Hide Rain Gauges";
+            toggleGriddedTooltips(false);  // Hide gridded tooltips when grid points are shown
+        }
+
+        // Toggle gridded tooltips visibility
+        function toggleGriddedTooltips(visible) {
+            tooltipsVisible = visible;
+            if (gridLayer) {
+                gridLayer.eachLayer(layer => {
+                    if (layer.getTooltip()) {
+                        if (visible) {
+                            layer.openTooltip();  // Show tooltips
+                        } else {
+                            layer.closeTooltip();  // Hide tooltips
+                        }
+                    }
+                });
+            }
+        }
+
+        function resetGridPoints() {
+            if (gridLayer) {
+                map.removeLayer(gridLayer);
+                gridLayer = null;
+                document.getElementById('toggle-grid-points').textContent = "Show Rain Gauges";
+            }
+        }
+
+        // Initially load the GeoJSON for first map
+        loadGeoJSON('perc_flagged', '15min');
+
+        // Add legend to the map
+        function addLegend(selectedQC, min, max) {
+            if (window.currentLegend) {
+                map.removeControl(window.currentLegend);
+            }
+
+            const qcLabels = {
+                perc_flagged: 'perc_flagged',
+                total_flagged_rows: 'total_flagged_rows',
+                percentiles_zero: 'percentiles_zero',
+                total_rows: 'total_rows',
+                k_largest_zero: 'k-largest_zero',
+                days_of_week: 'days_of_week',
+                hours_of_day: 'hours_of_day',
+                intermittency: 'intermittency',
+                min_val_change: 'min_val_change',
+                r99p: 'r99p',
+                prcptot: 'prcptot',
+                timings_offset: 'timings_offset',
+                affinity_index: 'affinity_index',
+                pearson_corr: 'pearson_corr',
+                world_record_check: 'world_record_check',
+                rx1day_check: 'rx1day_check',
+                dry_spell_flag: 'dry_spell_flag',
+                monthly_accumulation: 'monthly_accumulation',
+                streak_flag1: 'streak_flag1',
+                streak_flag3: 'streak_flag3',
+                streak_flag4: 'streak_flag4',
+                streak_flag5: 'streak_flag5',
+                wet_spell_flag_hourly: 'wet_spell_flag_hourly',
+                dry_spell_flag_hourly: 'dry_spell_flag_hourly'
+                // Add more mappings if needed
+            };
+
+            const legend = L.control({ position: 'bottomright' });
+
+            legend.onAdd = function (map) {
+                const div = L.DomUtil.create('div', 'info legend');
+                const title = qcLabels[selectedQC] || selectedQC;
+                div.innerHTML = `<strong>${title}</strong><br>`;
+
+                const rangeMin = min ?? 0;
+                const rangeMax = max ?? 100;
+                const step = (rangeMax - rangeMin) / 10;
+
+                const grades = Array.from({ length: 10 }, (_, i) => rangeMin + i * step);
+
+                const labels = grades.map((from, i) => {
+                    const to = i < grades.length - 1 ? grades[i + 1] : `${rangeMax}+`;
+                    const displayTo = typeof to === 'number' ? to.toFixed(0) : to;
+                    return `<i style="background:${getColor(from)}"></i> ${from.toFixed(0)}&ndash;${displayTo}`;
+                });
+
+                div.innerHTML += labels.join('<br>');
+                return div;
+            };
+
+            legend.addTo(map);
+            window.currentLegend = legend;
+        }
+
+        // Event listener for year change
+        document.getElementById('qc-select').addEventListener('change', function() {
+            let selectedQC = this.value;
+            let selectedFrequency = document.getElementById('data-select').value;
+            resetGridPoints();  // Turn off grid points
+            loadGeoJSON(selectedQC, selectedFrequency);
+        });
+
+        document.getElementById('data-select').addEventListener('change', function() {
+            let selectedQC = document.getElementById('qc-select').value;
+            let selectedFrequency = this.value;
+            resetGridPoints();  // Turn off grid points when frequency changes
+            loadGeoJSON(selectedQC, selectedFrequency);
+        });
+
+        // Ensure points update when year changes
+        document.getElementById('data-select').addEventListener('change', function() {
+            if (gridLayer) {
+                map.removeLayer(gridLayer);
+                gridLayer = null;
+                showFilteredGridPoints(this.value);
+            }
+        });
+
+        document.getElementById('toggle-grid-points').addEventListener('click', toggleGridPoints);
+
+    </script>
+<div>The rain gauge network may not be complete, especially since 2021 (data is still being QC'd and uploaded to the UKCEH database).</div>
+</body>
+</html>
