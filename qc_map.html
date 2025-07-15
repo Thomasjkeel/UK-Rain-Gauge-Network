@@ -47,30 +47,38 @@
     <div style="display: flex; align-items: center; gap: 10px;">
         <label for="qc-select" style="font-size: 14px;"><h2>Select QC method:</h2></label>
         <select id="qc-select" style="font-size: 14px; padding: 5px; width: auto;">
-            <option value="perc_flagged">Flagged rows (%)</option>
-            <option value="total_flagged_rows">Total flagged rows</option>
-            <option value="total_rows">Total rows</option>
-            <!-- <option value="percentiles_zero">total_rows</option> -->
-            <option value="k-largest_zero">Years where top-10 is 0</option>
-            <option value="days_of_week">Day of week bias</option>
-            <option value="hours_of_day">Hour of day bias</option>
-            <option value="intermittency">Years with intermittency</option>
-            <option value="timings_offset">Suspicious offset -1 or +1 day</option>
-            <option value="min_val_change">Years with min-val change</option>
-            <option value="world_record_check">Exceedance of world record</option>
-            <option value="r99p">Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">R99p<a/></option>
-            <option value="prcptot">Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">PRCPTOT<a/></option>
-            <option value="rx1day_check">Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">Rx1day<a/></option>
-            <option value="dry_spell_flag">Suspiciously long dry spells</option>
-            <option value="affinity_index">Affinity index with nearest neighbour</option>
-            <option value="pearson_corr">Correlation to nearest neighbour</option>
-            <option value="monthly_accumulation">Potential monthly accumulation</option>
-            <option value="streak_flag1">Streaks of 2 or more large repeated values</option>
-            <option value="streak_flag3">Streaks of 12 or more non-zero repeated values</option>
-            <option value="streak_flag4">Streaks of 24 or more non-zero repeated values</option>
-            <option value="streak_flag5">Zeros bounded by streaks of >24 repeated values</option>
-            <option value="wet_spell_flag_hourly">Much wetter than neighbours</option>
-            <option value="dry_spell_flag_hourly">Much drier than neighbours</option>
+            <optgroup label="Quality control summary">
+                <option value="perc_flagged">Flagged rows (%)</option>
+                <option value="total_flagged_rows">Total flagged rows</option>
+                <option value="total_rows">Total rows</option>
+            </optgroup>
+            <optgroup label="Rain gauge checks">
+                <!-- <option value="percentiles_zero">total_rows</option> -->
+                <option value="k-largest_zero">Years where top-10 is 0</option>
+                <option value="days_of_week">Day of week bias</option>
+                <option value="hours_of_day">Hour of day bias</option>
+                <option value="intermittency">Years with intermittency issue</option>
+                <option value="timings_offset">Suspicious offset -1 or +1 day</option>
+                <option value="min_val_change">Years with min-val change</option>
+                <option value="affinity_index">Affinity index with nearest neighbour</option>
+                <option value="pearson_corr">Correlation to nearest neighbour</option>
+            </optgroup>
+            <optgroup label="Rainfall checks">
+                <option value="world_record_check">Exceedance of world record</option>
+                <option value="r99p">Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">R99p<a/></option>
+                <option value="prcptot">Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">PRCPTOT<a/></option>
+                <option value="rx1day_check">Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">Rx1day<a/></option>
+                <option value="dry_spell_flag">Suspiciously long dry spells</option>
+                <option value="monthly_accumulation">Potential monthly accumulations</option>
+                <option value="streak_flag1">Streaks of 2 or more large repeated values</option>
+                <option value="streak_flag3">Streaks of 12 or more non-zero repeated values</option>
+                <option value="streak_flag4">Streaks of 24 or more non-zero repeated values</option>
+                <option value="streak_flag5">Zeros bounded by streaks of >24 repeated values</option>
+            </optgroup>
+            <optgroup label="Neighbourhood checks">
+                <option value="wet_spell_flag_hourly">Much wetter than neighbours</option>
+                <option value="dry_spell_flag_hourly">Much drier than neighbours</option>
+            </optgroup>
         </select>
         <label for="data-select" style="font-size: 14px;"><h2>Select data:</h2></label>
         <select id="data-select" style="font-size: 14px; padding: 5px; width: auto;">
@@ -111,7 +119,7 @@
             k_largest_zero: 'Years where top-10 is 0',
             days_of_week: 'Day of week bias',
             hours_of_day: 'Hour of day bias',
-            intermittency: 'Years with intermittency',
+            intermittency: 'Years with intermittency issue',
             timings_offset: 'Suspicious offset -1 or +1 day (0 or 1)',
             min_val_change: 'Years with min-val change',
             world_record_check: 'Exceedance of world record (rows)',
@@ -121,7 +129,7 @@
             dry_spell_flag: 'Suspiciously long dry spells (rows)',
             affinity_index: 'Affinity index to nearest neighbour',
             pearson_corr: 'Correlation to nearest neighbour',
-            monthly_accumulation: 'Potential monthly accumulation (rows)',
+            monthly_accumulation: 'Potential monthly accumulations (rows)',
             streak_flag1: 'Streaks of 2 or more large repeated values (rows)',
             streak_flag3: 'Streaks of 12 or more non-zero repeated values (rows)',
             streak_flag4: 'Streaks of 24 or more non-zero repeated values (rows)',
