@@ -35,6 +35,11 @@
             margin-right: 8px;
             opacity: 0.7;
         }
+
+        mark.blue {
+            color:#31b3ff;
+            background: none;
+        }
     </style>
 </head>
 <body>
@@ -72,33 +77,20 @@
             <option value="15min">15 mins</option>
             <option value="1hr">1 hour</option>
         </select>
-        <button id="toggle-grid-points" style="margin: 10px; padding: 10px; font-size: 14px;">
-            Show Rain Gauges
-        </button>
-        <h2 style="flex-grow: 1; text-align: center; margin: 0;">Gauges grouped into Middle-layer Super Output Areas (MSOAs)</h2>
-
     </div>
-
-    <script>
-        // add listener for QC method select
-        const qcSelect = document.getElementById('qc-select');
-
-        // Handle selection change (you can customize the behavior here)
-        qcSelect.addEventListener('change', function() {
-            console.log("Selected QC: " + qcSelect.value);
-            // You can trigger other functions or update data here based on the selected year
-        });
-    </script>
 
     <!-- Map container -->
     <div id="map"></div>
 
     <!-- Leaflet JavaScript -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
     <script>
-        // Initialize the map with EPSG:4326 CRS (WGS84)
-        // Initialize the map
+        function formatNumber(num) {
+            if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(1) + 'k';
+            return Math.round(num).toString();
+        }
+
         var map = L.map('map').setView([53.5074, -0.8], 5);  // Set initial view to London (lat, lng)
 
         // Set the tile layer (OpenStreetMap)
@@ -106,183 +98,95 @@
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Function to get color based on data value
-        function getColor(value) {
-            if (value === null || value === undefined) return 'transparent';
+        let currentGeoJsonLayer = null;
+        let gridLayer = null;
+        let gridData = null;
+        let tooltipsVisible = true;
+
+        const qcLabels = {
+            perc_flagged: 'Percent Flagged',
+            total_flagged_rows: 'Total Flagged Rows',
+            // Add more if needed
+        };
+
+        function getColor(value, min, max) {
+            if (value === null || value === undefined || isNaN(value)) return 'transparent';
+            if (max === min) return '#8000ff'; // edge case: all values same
 
             const colors = [
                 '#f2e5ff', '#e5ccff', '#d9b3ff', '#cc99ff', '#bf80ff',
                 '#b366ff', '#a64dff', '#9933ff', '#8000ff', '#6600cc'
             ];
 
-            const bin = Math.floor(value / 10); // or better: based on min/max range
-            const index = Math.max(0, Math.min(colors.length - 1, bin));
-            return colors[index];
+            // Normalize value to a range of 0 to 1
+            const normalized = (value - min) / (max - min);
+            const index = Math.floor(normalized * (colors.length - 1));
+
+            return colors[Math.max(0, Math.min(colors.length - 1, index))];
         }
 
-        // Function to load GeoJSON based on the selected year
-        function loadGeoJSON(selectedQC, frequency) {
-            // Clear existing GeoJSON layers
-            map.eachLayer(function(layer) {
-                if (layer instanceof L.GeoJSON) {
-                    map.removeLayer(layer);
-                }
-            });
+        function loadRainGauges(selectedQC, frequency) {
+            const geojsonFile = `qc_data/UK_${frequency}_QC_summary_4326.geojson`;
 
-            // Function to style each feature
-            function style(feature) {
-                const value = feature.properties[selectedQC];
-                return {
-                    fillColor: getColor(value), // Color based on selected property
-                    weight: 0,
-                    opacity: 1,
-                    color: 'black',
-                    dashArray: '3',
-                    fillOpacity: 0.7
-                };
-            }
-
-            // Handle tooltip visibility
-            let tooltipsVisible = true;
-
-            // Add tooltips on hover and make it permanent on click
-            function onEachFeature(feature, layer) {
-                const value = feature.properties[selectedQC];
-                let tooltipLabel;
-
-                if (value === null || value === undefined) {
-                    tooltipLabel = "No data";
-                } else if (value === 0) {
-                    tooltipLabel = "No rain gauges";
-                } else {
-                    tooltipLabel = `Number of gauges: ${value}`;
-                }
-
-                // Tooltip on hover
-                layer.on('mouseover', function(e) {
-                    if (tooltipsVisible) {
-                        layer.bindTooltip(tooltipLabel, {
-                            permanent: false,
-                            direction: "top",
-                            offset: [0, -5]
-                        }).openTooltip();
-                    }
-                });
-
-                // Hide tooltip on mouseout
-                layer.on('mouseout', function(e) {
-                    if (!tooltipsVisible) {
-                        layer.closeTooltip();
-                    }
-                });
-            }
-
-            // Determine the correct GeoJSON file
-            var geojsonFile = `qc_data/UK_${frequency}_QC_MSOA_max.geojson`;
-
-            // Load GeoJSON and apply styling
             fetch(geojsonFile)
-                .then(response => response.json())
+                .then(res => res.json())
                 .then(data => {
-                    L.geoJSON(data, {
-                        style: style,
-                        onEachFeature: onEachFeature
-                    }).addTo(map);
-                    // === Calculate min and max for selectedQC field ===
-                    let values = data.features
+                    if (gridLayer) {
+                        map.removeLayer(gridLayer);
+                    }
+
+                    const values = data.features
                         .map(f => f.properties[selectedQC])
-                        .filter(v => v !== null && v !== undefined);
+                        .filter(v => v !== null && v !== undefined && !isNaN(v));
 
-                    let min = Math.min(...values);
-                    let max = Math.max(...values);
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
 
-                    // === Call the legend function ===
+                    gridLayer = L.geoJSON(data, {
+                        pointToLayer: (feature, latlng) => {
+                            const value = feature.properties[selectedQC];
+                            const fillColor = getColor(value, min, max); // Use scaled color
+
+                            const tooltip = `
+                                <strong>${feature.properties.SITE_NAME}</strong><br>
+                                <b>Station ID:</b> ${feature.properties.station_id}<br>
+                                <b>Operator:</b> ${feature.properties.OPERATOR_ID}<br>
+                                <mark class="blue";><b>${selectedQC}:</b> ${value ?? "No data"}</mark><br>
+                                <i>Click for more info...</i>
+                            `;
+
+                            return L.circleMarker(latlng, {
+                                radius: 8,
+                                color: 'black',
+                                weight: 1,
+                                fillColor: fillColor,
+                                fillOpacity: 0.8
+                            }).bindTooltip(tooltip, { permanent: false });
+                        },
+                        onEachFeature: (feature, layer) => {
+                            const value = feature.properties[selectedQC];
+                            const popupContent = `
+                                <strong>${feature.properties.SITE_NAME}</strong><br>
+                                <b>Station ID:</b> ${feature.properties.station_id}<br>
+                                <mark class="blue";><b>${selectedQC}:</b> ${value ?? "No data"}</mark><br>
+                                <b>Operator:</b> ${feature.properties.OPERATOR_ID}<br>
+                                <b>Start Date:</b> ${new Date(feature.properties.start_datetime).toLocaleDateString()}<br>
+                                <b>End Date:</b> ${new Date(feature.properties.end_datetime).toLocaleDateString()}<br>
+                                <b>Completeness:</b> ${feature.properties.COMPLETENESS}<br>
+                                <b>Flagged rows (%):</b> ${feature.properties.perc_flagged}<br>
+                                <b>Nearby gauges (&lt;30km):</b> ${feature.properties.num_nearby_gauges_30km}
+                            `;
+                            layer.on('click', () => {
+                                layer.bindPopup(popupContent).openPopup();
+                            });
+                        }
+                    }).addTo(map);
+
                     addLegend(selectedQC, min, max);
                 })
-                .catch(error => console.error('Error loading GeoJSON:', error));
+                .catch(err => console.error('Error loading rain gauge GeoJSON:', err));
         }
 
-        // Toggle Grid Points and Tooltips
-        let gridData = null;
-        let gridLayer = null;
-        let gridDataLoaded = false;
-
-        function toggleGridPoints() {
-            let selectedFrequency = document.getElementById('data-select').value;
-            var rainGaugePoints = `qc_data/UK_${selectedFrequency}_QC_MSOA_max.geojson`
-            if (gridLayer) {
-                map.removeLayer(gridLayer);
-                gridLayer = null;
-                document.getElementById('toggle-grid-points').textContent = "Show Rain Gauges";
-                toggleGriddedTooltips(true);  // Show tooltips on gridded data layer
-            } else {
-                fetch(rainGaugePoints) // Fetch data only once
-                    .then(response => response.json())
-                    .then(data => {
-                        gridData = data;
-                        gridDataLoaded = true;
-                        showFilteredGridPoints(selectedFrequency);
-                    })
-                    .catch(error => console.error('Error loading GeoJSON:', error));
-            }
-        }
-
-        function showFilteredGridPoints(selectedFrequency) {
-            if (!gridData) return;
-            gridLayer = L.geoJSON({ type: "FeatureCollection", features: gridData.features}, {
-                pointToLayer: function (feature, latlng) {
-                    let tooltipContent = `
-                        <strong>${feature.properties.SITE_NAME}</strong><br>
-                        <b>Station ID ID:</b> ${feature.properties.station_id}<br>
-                        <b>Operator:</b> ${feature.properties.OPERATOR_ID}%<br>
-                        <b>Start Date:</b> ${new Date(feature.properties.start_datetime).toLocaleDateString()}<br>
-                        <b>End Date:</b> ${new Date(feature.properties.end_datetime).toLocaleDateString()}<br>
-                        <b>Completeness: </b>${feature.properties.COMPLETENESS}<br>
-                        <b>Flagged rows (%): </b>${feature.properties.perc_flagged}<br>
-                        <b>Number of nearby gauges (<30 km): </b>${feature.properties.num_nearby_gauges_30km}
-                    `;
-                    return L.circleMarker(latlng, {
-                        radius: 8,
-                        fillColor: "none",
-                        color: "black",
-                        weight: 2,
-                        fillOpacity: 0
-                    }).bindTooltip(tooltipContent, { permanent: false });
-                }
-            }).addTo(map);
-
-            document.getElementById('toggle-grid-points').textContent = "Hide Rain Gauges";
-            toggleGriddedTooltips(false);  // Hide gridded tooltips when grid points are shown
-        }
-
-        // Toggle gridded tooltips visibility
-        function toggleGriddedTooltips(visible) {
-            tooltipsVisible = visible;
-            if (gridLayer) {
-                gridLayer.eachLayer(layer => {
-                    if (layer.getTooltip()) {
-                        if (visible) {
-                            layer.openTooltip();  // Show tooltips
-                        } else {
-                            layer.closeTooltip();  // Hide tooltips
-                        }
-                    }
-                });
-            }
-        }
-
-        function resetGridPoints() {
-            if (gridLayer) {
-                map.removeLayer(gridLayer);
-                gridLayer = null;
-                document.getElementById('toggle-grid-points').textContent = "Show Rain Gauges";
-            }
-        }
-
-        // Initially load the GeoJSON for first map
-        loadGeoJSON('perc_flagged', '15min');
-
-        // Add legend to the map
         function addLegend(selectedQC, min, max) {
             if (window.currentLegend) {
                 map.removeControl(window.currentLegend);
@@ -313,7 +217,6 @@
                 streak_flag5: 'streak_flag5',
                 wet_spell_flag_hourly: 'wet_spell_flag_hourly',
                 dry_spell_flag_hourly: 'dry_spell_flag_hourly'
-                // Add more mappings if needed
             };
 
             const legend = L.control({ position: 'bottomright' });
@@ -325,17 +228,25 @@
 
                 const rangeMin = min ?? 0;
                 const rangeMax = max ?? 100;
-                const step = (rangeMax - rangeMin) / 10;
 
-                const grades = Array.from({ length: 10 }, (_, i) => rangeMin + i * step);
+                // Prevent edge case
+                if (rangeMax === rangeMin) {
+                    div.innerHTML += `<i style="background:${getColor(rangeMin, min, max)}"></i> ${rangeMin}`;
+                    return div;
+                }
 
-                const labels = grades.map((from, i) => {
-                    const to = i < grades.length - 1 ? grades[i + 1] : `${rangeMax}+`;
-                    const displayTo = typeof to === 'number' ? to.toFixed(0) : to;
-                    return `<i style="background:${getColor(from)}"></i> ${from.toFixed(0)}&ndash;${displayTo}`;
+                const numBins = 10;
+                const step = (rangeMax - rangeMin) / numBins;
+                const grades = Array.from({ length: numBins }, (_, i) => rangeMin + i * step);
+
+                grades.forEach((from, i) => {
+                    const to = i < grades.length - 1 ? grades[i + 1] : rangeMax;
+                    div.innerHTML += `
+                        <i style="background:${getColor(from, rangeMin, rangeMax)}"></i>
+                        ${formatNumber(from)}–${formatNumber(to)}<br>
+                    `;
                 });
 
-                div.innerHTML += labels.join('<br>');
                 return div;
             };
 
@@ -343,33 +254,28 @@
             window.currentLegend = legend;
         }
 
-        // Event listener for year change
-        document.getElementById('qc-select').addEventListener('change', function() {
-            let selectedQC = this.value;
-            let selectedFrequency = document.getElementById('data-select').value;
-            resetGridPoints();  // Turn off grid points
-            loadGeoJSON(selectedQC, selectedFrequency);
+        // Initial load
+        // Initially load the GeoJSON for first map
+        loadRainGauges('perc_flagged', '15min');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const selectedQC = document.getElementById('qc-select').value;
+            const selectedFrequency = document.getElementById('data-select').value;
+            loadRainGauges(selectedFrequency, selectedQC);
         });
 
-        document.getElementById('data-select').addEventListener('change', function() {
-            let selectedQC = document.getElementById('qc-select').value;
-            let selectedFrequency = this.value;
-            resetGridPoints();  // Turn off grid points when frequency changes
-            loadGeoJSON(selectedQC, selectedFrequency);
+        document.getElementById('qc-select').addEventListener('change', () => {
+            const selectedQC = document.getElementById('qc-select').value;
+            const selectedFrequency = document.getElementById('data-select').value;
+            loadRainGauges(selectedQC, selectedFrequency);
         });
 
-        // Ensure points update when year changes
-        document.getElementById('data-select').addEventListener('change', function() {
-            if (gridLayer) {
-                map.removeLayer(gridLayer);
-                gridLayer = null;
-                showFilteredGridPoints(this.value);
-            }
+        document.getElementById('data-select').addEventListener('change', () => {
+            const selectedQC = document.getElementById('qc-select').value;
+            const selectedFrequency = document.getElementById('data-select').value;
+            loadRainGauges(selectedQC, selectedFrequency);
         });
-
-        document.getElementById('toggle-grid-points').addEventListener('click', toggleGridPoints);
-
     </script>
-<div>The rain gauge network may not be complete, especially since 2021 (data is still being QC'd and uploaded to the UKCEH database).</div>
+<div>The rain gauge network is incomplete. Only what is on the UKCEH database.</div>
 </body>
 </html>
