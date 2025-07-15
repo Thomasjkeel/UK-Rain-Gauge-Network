@@ -55,22 +55,22 @@
             <option value="days_of_week">Day of week bias</option>
             <option value="hours_of_day">Hour of day bias</option>
             <option value="intermittency">Years with intermittency</option>
+            <option value="timings_offset">Suspicious offset -1 or +1 day</option>
             <option value="min_val_change">Years with min-val change</option>
+            <option value="world_record_check">Exceedance of world record</option>
             <option value="r99p">Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">R99p<a/></option>
-            <option value="prcptot">'Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">PRCPTOT<a/></option>
-            <option value="timings_offset">timings_offset</option>
-            <option value="affinity_index">affinity_index</option>
-            <option value="pearson_corr">pearson_corr</option>
-            <option value="world_record_check">world_record_check</option>
-            <option value="rx1day_check">rx1day_check</option>
-            <option value="dry_spell_flag">dry_spell_flag</option>
-            <option value="monthly_accumulation">monthly_accumulation</option>
-            <option value="streak_flag1">streak_flag1</option>
-            <option value="streak_flag3">streak_flag3</option>
-            <option value="streak_flag4">streak_flag4</option>
-            <option value="streak_flag5">streak_flag5</option>
-            <option value="wet_spell_flag_hourly">wet_spell_flag_hourly</option>
-            <option value="dry_spell_flag_hourly">dry_spell_flag_hourly</option>
+            <option value="prcptot">Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">PRCPTOT<a/></option>
+            <option value="rx1day_check">Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">Rx1day<a/></option>
+            <option value="dry_spell_flag">Suspiciously long dry spells</option>
+            <option value="affinity_index">Affinity index with nearest neighbour</option>
+            <option value="pearson_corr">Correlation to nearest neighbour</option>
+            <option value="monthly_accumulation">Potential monthly accumulation</option>
+            <option value="streak_flag1">Streaks of 2 or more large repeated values</option>
+            <option value="streak_flag3">Streaks of 12 or more non-zero repeated values</option>
+            <option value="streak_flag4">Streaks of 24 or more non-zero repeated values</option>
+            <option value="streak_flag5">Zeros bounded by streaks of >24 repeated values</option>
+            <option value="wet_spell_flag_hourly">Much wetter than neighbours</option>
+            <option value="dry_spell_flag_hourly">Much drier than neighbours</option>
         </select>
         <label for="data-select" style="font-size: 14px;"><h2>Select data:</h2></label>
         <select id="data-select" style="font-size: 14px; padding: 5px; width: auto;">
@@ -112,22 +112,22 @@
             days_of_week: 'Day of week bias',
             hours_of_day: 'Hour of day bias',
             intermittency: 'Years with intermittency',
+            timings_offset: 'Suspicious offset -1 or +1 day (0 or 1)',
             min_val_change: 'Years with min-val change',
-            r99p: 'Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">R99p<a/>',
-            prcptot: 'Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">PRCPTOT<a/>',
-            timings_offset: 'timings_offset',
-            affinity_index: 'affinity_index',
-            pearson_corr: 'pearson_corr',
-            world_record_check: 'world_record_check',
-            rx1day_check: 'rx1day_check',
-            dry_spell_flag: 'dry_spell_flag',
-            monthly_accumulation: 'monthly_accumulation',
-            streak_flag1: 'streak_flag1',
-            streak_flag3: 'streak_flag3',
-            streak_flag4: 'streak_flag4',
-            streak_flag5: 'streak_flag5',
-            wet_spell_flag_hourly: 'wet_spell_flag_hourly',
-            dry_spell_flag_hourly: 'dry_spell_flag_hourly'
+            world_record_check: 'Exceedance of world record (rows)',
+            r99p: 'Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">R99p<a/> (rows)',
+            prcptot: 'Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">PRCPTOT<a/> (rows)',
+            rx1day_check: 'Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">Rx1day<a/> (rows)',
+            dry_spell_flag: 'Suspiciously long dry spells (rows)',
+            affinity_index: 'Affinity index to nearest neighbour',
+            pearson_corr: 'Correlation to nearest neighbour',
+            monthly_accumulation: 'Potential monthly accumulation (rows)',
+            streak_flag1: 'Streaks of 2 or more large repeated values (rows)',
+            streak_flag3: 'Streaks of 12 or more non-zero repeated values (rows)',
+            streak_flag4: 'Streaks of 24 or more non-zero repeated values (rows)',
+            streak_flag5: 'Zeros bounded by streaks of >24 repeated values (rows)',
+            wet_spell_flag_hourly: 'Much wetter than neighbours (rows)',
+            dry_spell_flag_hourly: 'Much drier than neighbours (rows)'
         };
 
         function getColor(value, min, max) {
