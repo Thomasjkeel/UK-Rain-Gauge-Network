@@ -47,17 +47,17 @@
     <div style="display: flex; align-items: center; gap: 10px;">
         <label for="qc-select" style="font-size: 14px;"><h2>Select QC method:</h2></label>
         <select id="qc-select" style="font-size: 14px; padding: 5px; width: auto;">
-            <option value="perc_flagged">perc_flagged</option>
-            <option value="total_flagged_rows">total_flagged_rows</option>
-            <option value="total_rows">percentiles_zero</option>
-            <option value="percentiles_zero">total_rows</option>
-            <option value="k-largest_zero">k-largest_zero</option>
-            <option value="days_of_week">days_of_week</option>
-            <option value="hours_of_day">hours_of_day</option>
-            <option value="intermittency">intermittency</option>
-            <option value="min_val_change">min_val_change</option>
-            <option value="r99p">r99p</option>
-            <option value="prcptot">prcptot</option>
+            <option value="perc_flagged">Flagged rows (%)</option>
+            <option value="total_flagged_rows">Total flagged rows</option>
+            <option value="total_rows">Total rows</option>
+            <!-- <option value="percentiles_zero">total_rows</option> -->
+            <option value="k-largest_zero">Years where top-10 is 0</option>
+            <option value="days_of_week">Day of week bias</option>
+            <option value="hours_of_day">Hour of day bias</option>
+            <option value="intermittency">Years with intermittency</option>
+            <option value="min_val_change">Years with min-val change</option>
+            <option value="r99p">Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">R99p<a/></option>
+            <option value="prcptot">'Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">PRCPTOT<a/></option>
             <option value="timings_offset">timings_offset</option>
             <option value="affinity_index">affinity_index</option>
             <option value="pearson_corr">pearson_corr</option>
@@ -104,9 +104,30 @@
         let tooltipsVisible = true;
 
         const qcLabels = {
-            perc_flagged: 'Percent Flagged',
-            total_flagged_rows: 'Total Flagged Rows',
-            // Add more if needed
+            perc_flagged: 'Flagged rows (%)',
+            total_flagged_rows: 'Total flagged rows',
+            // percentiles_zero: 'Years 95th percentile is 0',
+            total_rows: 'Total rows',
+            k_largest_zero: 'Years where top-10 is 0',
+            days_of_week: 'Day of week bias',
+            hours_of_day: 'Hour of day bias',
+            intermittency: 'Years with intermittency',
+            min_val_change: 'Years with min-val change',
+            r99p: 'Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">R99p<a/>',
+            prcptot: 'Exceedance of <a href="https://etccdi.pacificclimate.org/docs/ETCCDMIndicesComparison1.pdf" target="_blank">PRCPTOT<a/>',
+            timings_offset: 'timings_offset',
+            affinity_index: 'affinity_index',
+            pearson_corr: 'pearson_corr',
+            world_record_check: 'world_record_check',
+            rx1day_check: 'rx1day_check',
+            dry_spell_flag: 'dry_spell_flag',
+            monthly_accumulation: 'monthly_accumulation',
+            streak_flag1: 'streak_flag1',
+            streak_flag3: 'streak_flag3',
+            streak_flag4: 'streak_flag4',
+            streak_flag5: 'streak_flag5',
+            wet_spell_flag_hourly: 'wet_spell_flag_hourly',
+            dry_spell_flag_hourly: 'dry_spell_flag_hourly'
         };
 
         function getColor(value, min, max) {
@@ -145,13 +166,14 @@
                     gridLayer = L.geoJSON(data, {
                         pointToLayer: (feature, latlng) => {
                             const value = feature.properties[selectedQC];
+                            const name = qcLabels[selectedQC] || selectedQC;
                             const fillColor = getColor(value, min, max); // Use scaled color
-
                             const tooltip = `
                                 <strong>${feature.properties.SITE_NAME}</strong><br>
                                 <b>Station ID:</b> ${feature.properties.station_id}<br>
                                 <b>Operator:</b> ${feature.properties.OPERATOR_ID}<br>
-                                <mark class="blue";><b>${selectedQC}:</b> ${value ?? "No data"}</mark><br>
+                                <mark class="blue";><b>${name}:</b> ${value ?? "No data"}</mark><br>
+                                <br>
                                 <i>Click for more info...</i>
                             `;
 
@@ -165,10 +187,12 @@
                         },
                         onEachFeature: (feature, layer) => {
                             const value = feature.properties[selectedQC];
+                            const name = qcLabels[selectedQC] || selectedQC;
+
                             const popupContent = `
                                 <strong>${feature.properties.SITE_NAME}</strong><br>
                                 <b>Station ID:</b> ${feature.properties.station_id}<br>
-                                <mark class="blue";><b>${selectedQC}:</b> ${value ?? "No data"}</mark><br>
+                                <mark class="blue";><b>${name}:</b> ${value ?? "No data"}</mark><br>
                                 <b>Operator:</b> ${feature.properties.OPERATOR_ID}<br>
                                 <b>Start Date:</b> ${new Date(feature.properties.start_datetime).toLocaleDateString()}<br>
                                 <b>End Date:</b> ${new Date(feature.properties.end_datetime).toLocaleDateString()}<br>
@@ -191,33 +215,6 @@
             if (window.currentLegend) {
                 map.removeControl(window.currentLegend);
             }
-
-            const qcLabels = {
-                perc_flagged: 'perc_flagged',
-                total_flagged_rows: 'total_flagged_rows',
-                percentiles_zero: 'percentiles_zero',
-                total_rows: 'total_rows',
-                k_largest_zero: 'k-largest_zero',
-                days_of_week: 'days_of_week',
-                hours_of_day: 'hours_of_day',
-                intermittency: 'intermittency',
-                min_val_change: 'min_val_change',
-                r99p: 'r99p',
-                prcptot: 'prcptot',
-                timings_offset: 'timings_offset',
-                affinity_index: 'affinity_index',
-                pearson_corr: 'pearson_corr',
-                world_record_check: 'world_record_check',
-                rx1day_check: 'rx1day_check',
-                dry_spell_flag: 'dry_spell_flag',
-                monthly_accumulation: 'monthly_accumulation',
-                streak_flag1: 'streak_flag1',
-                streak_flag3: 'streak_flag3',
-                streak_flag4: 'streak_flag4',
-                streak_flag5: 'streak_flag5',
-                wet_spell_flag_hourly: 'wet_spell_flag_hourly',
-                dry_spell_flag_hourly: 'dry_spell_flag_hourly'
-            };
 
             const legend = L.control({ position: 'bottomright' });
 
@@ -259,6 +256,9 @@
         loadRainGauges('perc_flagged', '15min');
 
         window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('qc-select').selectedIndex = 0;
+            document.getElementById('data-select').selectedIndex = 0;
+
             const selectedQC = document.getElementById('qc-select').value;
             const selectedFrequency = document.getElementById('data-select').value;
             loadRainGauges(selectedFrequency, selectedQC);
@@ -276,6 +276,11 @@
             loadRainGauges(selectedQC, selectedFrequency);
         });
     </script>
-<div>The rain gauge network is incomplete. Only what is on the UKCEH database.</div>
+<div>
+    The rain gauge network is incomplete. Only what is on the UKCEH database.<br>
+    For more information about the Quality control methods see <a href="https://www.sciencedirect.com/science/article/pii/S1364815221002127" target="_blank">Lewis et al. (2021)</a><br>
+    The open-source Python package: <a href="https://github.com/NERC-CEH/RainfallQC" target="_blank">RainfallQC</a> was used to run Quality Control.
+
+</div>
 </body>
 </html>
