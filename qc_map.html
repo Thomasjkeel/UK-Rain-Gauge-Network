@@ -261,7 +261,7 @@
 
                 // Add a clickable link/button to open image overlay
                 div.innerHTML += `
-                    <button id="legend-image-button" style="margin-top:5px;">View Details</button>
+                    <button id="legend-image-button" style="margin-top:5px;">View Example</button>
                 `;
 
                 setTimeout(() => {
@@ -279,7 +279,8 @@
         }
 
         function showLegendImageOverlay(selectedQC) {
-            const imageUrl = `/example_images/${selectedQC}.png`; // <-- adjust path as needed
+            const imageUrl = `example_images/${selectedQC}.png`; // <-- adjust path as needed
+            console.log("Loading image:", imageUrl);
             const overlay = document.getElementById("legend-image-overlay");
             const img = document.getElementById("legend-image");
             img.src = imageUrl;
