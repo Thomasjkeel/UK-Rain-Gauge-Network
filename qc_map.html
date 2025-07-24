@@ -217,7 +217,7 @@
                                 <b>End Date:</b> ${new Date(feature.properties.end_datetime).toLocaleDateString()}<br>
                                 <b>Completeness:</b> ${feature.properties.COMPLETENESS}<br>
                                 <b>Flagged rows (%):</b> ${feature.properties.perc_flagged}<br>
-                                <b>Nearby gauges (&lt;30km):</b> ${feature.properties.num_nearby_gauges_30km}
+                                <b>Nearby gauges (&lt;50km):</b> ${feature.properties.num_nearby_gauges_50km}
                             `;
                             layer.on('click', () => {
                                 layer.bindPopup(popupContent).openPopup();
