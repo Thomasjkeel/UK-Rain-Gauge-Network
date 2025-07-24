@@ -90,6 +90,15 @@
     <!-- Map container -->
     <div id="map"></div>
 
+    <!-- Image overlay -->
+    <div id="legend-image-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+        background-color:rgba(0,0,0,0.8); z-index:10000; justify-content:center; align-items:center;">
+        <div style="position:relative;">
+            <img id="legend-image" src="" alt="Legend Details" style="max-width:90vw; max-height:90vh; border: 4px solid white;" />
+            <button onclick="hideLegendImageOverlay()" style="position:absolute; top:10px; right:10px; z-index:10001;">✖</button>
+        </div>
+    </div>
+
     <!-- Leaflet JavaScript -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
@@ -234,29 +243,51 @@
                 const rangeMin = min ?? 0;
                 const rangeMax = max ?? 100;
 
-                // Prevent edge case
                 if (rangeMax === rangeMin) {
                     div.innerHTML += `<i style="background:${getColor(rangeMin, min, max)}"></i> ${rangeMin}`;
-                    return div;
+                } else {
+                    const numBins = 10;
+                    const step = (rangeMax - rangeMin) / numBins;
+                    const grades = Array.from({ length: numBins }, (_, i) => rangeMin + i * step);
+
+                    grades.forEach((from, i) => {
+                        const to = i < grades.length - 1 ? grades[i + 1] : rangeMax;
+                        div.innerHTML += `
+                            <i style="background:${getColor(from, rangeMin, rangeMax)}"></i>
+                            ${formatNumber(from)}–${formatNumber(to)}<br>
+                        `;
+                    });
                 }
 
-                const numBins = 10;
-                const step = (rangeMax - rangeMin) / numBins;
-                const grades = Array.from({ length: numBins }, (_, i) => rangeMin + i * step);
+                // Add a clickable link/button to open image overlay
+                div.innerHTML += `
+                    <button id="legend-image-button" style="margin-top:5px;">View Details</button>
+                `;
 
-                grades.forEach((from, i) => {
-                    const to = i < grades.length - 1 ? grades[i + 1] : rangeMax;
-                    div.innerHTML += `
-                        <i style="background:${getColor(from, rangeMin, rangeMax)}"></i>
-                        ${formatNumber(from)}–${formatNumber(to)}<br>
-                    `;
-                });
+                setTimeout(() => {
+                    const btn = document.getElementById("legend-image-button");
+                    if (btn) {
+                        btn.onclick = () => showLegendImageOverlay(selectedQC);
+                    }
+                }, 0);
 
                 return div;
             };
 
             legend.addTo(map);
             window.currentLegend = legend;
+        }
+
+        function showLegendImageOverlay(selectedQC) {
+            const imageUrl = `/example_images/${selectedQC}.png`; // <-- adjust path as needed
+            const overlay = document.getElementById("legend-image-overlay");
+            const img = document.getElementById("legend-image");
+            img.src = imageUrl;
+            overlay.style.display = "flex";
+        }
+
+        function hideLegendImageOverlay() {
+            document.getElementById("legend-image-overlay").style.display = "none";
         }
 
         // Initial load
